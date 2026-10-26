@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block c %}
+<h2>Vehículos en el parqueadero</h2><p>Celdas disponibles: <b>{{ libres }}</b></p>
+<table><tr><th>Placa</th><th>Marca</th><th>Celda</th><th>Entrada</th><th></th></tr>
+{% for d in dentro %}<tr><td>{{d.placa}}</td><td>{{d.marca}}</td><td>{{d.codigo}}</td><td>{{d.fecha_entrada}}</td>
+<td><form method="post" action="/salida/{{d.id_movimiento}}"><button>Registrar salida</button></form></td></tr>
+{% else %}<tr><td colspan="5">No hay vehículos dentro.</td></tr>{% endfor %}</table>{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block c %}
+<h2>Registrar usuario</h2><form method="post"><input type="hidden" name="accion" value="usuario">
+<label>Documento</label><input name="documento" required><label>Nombre</label><input name="nombre" required>
+<label>Teléfono</label><input name="telefono"><button>Guardar usuario</button></form>
+<h2>Registrar vehículo</h2><form method="post"><input type="hidden" name="accion" value="vehiculo">
+<label>Placa</label><input name="placa" required maxlength="10"><label>Marca</label><input name="marca">
+<label>Color</label><input name="color"><label>Tipo</label><select name="id_tipo"><option value="1">Carro</option><option value="2">Moto</option></select>
+<label>Documento del propietario</label><input name="documento" required><button>Guardar vehículo</button></form>{% endblock %}

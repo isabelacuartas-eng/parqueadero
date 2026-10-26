@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block c %}
+<h2>Historial de movimientos</h2><table><tr><th>Placa</th><th>Celda</th><th>Entrada</th><th>Salida</th></tr>
+{% for f in filas %}<tr><td>{{f.placa}}</td><td>{{f.codigo}}</td><td>{{f.fecha_entrada}}</td><td>{{f.fecha_salida or 'En parqueadero'}}</td></tr>{% endfor %}</table>{% endblock %}
