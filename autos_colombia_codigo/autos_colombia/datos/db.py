@@ -1,28 +1,86 @@
-"""Paquete datos: conexión y creación de la base de datos SQLite."""
+"""Paquete datos: conexión a MongoDB, índices y datos iniciales."""
 import os
-import sqlite3
+from datetime import datetime
 
-BASE = os.path.dirname(os.path.abspath(__file__))
-RUTA_DB = os.path.join(BASE, "..", "parqueadero.db")
+from werkzeug.security import generate_password_hash
+
+try:
+    from pymongo import MongoClient
+    from pymongo.errors import DuplicateKeyError
+    from pymongo.collection import ReturnDocument
+except ImportError:  # permite importar el proyecto sin pymongo (p. ej. en pruebas)
+    MongoClient = None
+    ReturnDocument = type("ReturnDocument", (), {"AFTER": True, "BEFORE": False})
+
+    class DuplicateKeyError(Exception):
+        """Clave duplicada (equivalente a pymongo.errors.DuplicateKeyError)."""
+
+_db = None
 
 
-def conectar():
-    con = sqlite3.connect(RUTA_DB)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA foreign_keys = ON")
-    return con
+def obtener_db():
+    """Devuelve la base de datos (se conecta la primera vez que se usa)."""
+    global _db
+    if _db is None:
+        if MongoClient is None:
+            raise RuntimeError("Falta pymongo. Ejecute: pip install -r requirements.txt")
+        uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
+        nombre = os.environ.get("MONGO_DB", "autos_colombia")
+        _db = MongoClient(uri, serverSelectionTimeoutMS=5000)[nombre]
+    return _db
+
+
+def usar_db(db):
+    """Permite inyectar otra base de datos (usado por las pruebas)."""
+    global _db
+    _db = db
+
+
+def col(nombre):
+    return obtener_db()[nombre]
+
+
+def siguiente_id(nombre):
+    """Identificador numérico autoincremental por colección."""
+    r = col("contadores").find_one_and_update(
+        {"_id": nombre}, {"$inc": {"seq": 1}}, upsert=True, return_document=ReturnDocument.AFTER)
+    return r["seq"]
 
 
 def inicializar():
-    con = conectar()
-    with open(os.path.join(BASE, "schema.sql"), encoding="utf-8") as f:
-        con.executescript(f.read())
-    if con.execute("SELECT COUNT(*) FROM celda").fetchone()[0] == 0:
-        for i in range(1, 11):
-            con.execute("INSERT INTO celda(codigo,id_tipo) VALUES (?,1)", (f"C-{i:02d}",))
+    """Crea los índices (integridad y concurrencia) y los datos de demostración."""
+    col("usuarios").create_index("documento", unique=True)
+    col("usuarios").create_index("correo", unique=True)
+    col("vehiculos").create_index("placa", unique=True)
+    col("celdas").create_index("codigo", unique=True)
+    # una celda solo puede tener un contrato activo y un cliente un solo contrato activo
+    col("contratos").create_index("id_celda", unique=True, partialFilterExpression={"estado": "ACTIVO"})
+    col("contratos").create_index("id_usuario", unique=True, partialFilterExpression={"estado": "ACTIVO"})
+    # una celda y un vehículo solo pueden tener un movimiento abierto a la vez
+    col("movimientos").create_index("id_celda", unique=True, partialFilterExpression={"abierto": True})
+    col("movimientos").create_index("id_vehiculo", unique=True, partialFilterExpression={"abierto": True})
+
+    if col("usuarios").count_documents({}) == 0:
+        def usuario(tipo_doc, doc, nom, ape, tel, correo, rol, clave):
+            col("usuarios").insert_one({
+                "id_usuario": siguiente_id("usuarios"), "tipo_documento": tipo_doc, "documento": doc,
+                "nombres": nom, "apellidos": ape, "telefono": tel, "correo": correo, "rol": rol,
+                "password_hash": generate_password_hash(clave), "estado": "ACTIVO",
+                "creado": datetime.now()})
+        usuario("CC", "1000000001", "Administrador", "Autos Colombia", "3000000001",
+                "admin@autoscolombia.co", "ADMINISTRADOR", "Admin123*")
+        usuario("CC", "1000000002", "Operador", "Autos Colombia", "3000000002",
+                "operador@autoscolombia.co", "OPERADOR", "Operador123*")
+        usuario("CC", "1001", "Ana", "Gómez", "3001112233", "ana.gomez@correo.co", "CLIENTE", "Cliente123*")
+        col("vehiculos").insert_one({"id_vehiculo": siguiente_id("vehiculos"), "placa": "ABC123",
+                                     "marca": "Mazda", "color": "Rojo", "tipo": "Carro", "id_usuario": 3})
+    if col("celdas").count_documents({}) == 0:
+        def celda(codigo, zona, tipo):
+            col("celdas").insert_one({"id_celda": siguiente_id("celdas"), "codigo": codigo, "zona": zona,
+                                      "tipo": tipo, "estado": "DISPONIBLE"})
+        for i in range(1, 7):
+            celda(f"C-{i:02d}", "Nivel 1", "Carro")
+        for i in range(7, 11):
+            celda(f"C-{i:02d}", "Nivel 2", "Carro")
         for i in range(1, 6):
-            con.execute("INSERT INTO celda(codigo,id_tipo) VALUES (?,2)", (f"M-{i:02d}",))
-        con.execute("INSERT INTO usuario(documento,nombre,telefono) VALUES ('1001','Ana Gómez','3001112233')")
-        con.execute("INSERT INTO vehiculo(placa,marca,color,id_tipo,id_usuario) VALUES ('ABC123','Mazda','Rojo',1,1)")
-    con.commit()
-    con.close()
+            celda(f"M-{i:02d}", "Zona motos", "Moto")

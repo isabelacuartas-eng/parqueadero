@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>{{ 'Editar usuario' if u else 'Nuevo usuario' }}</h1><div class="card"><form method="post"><div class="fila">
+{% if u %}
+<div><label>Documento</label><input value="{{ u.tipo_documento }} {{ u.documento }}" disabled></div><div><label>Nombre</label><input value="{{ u.nombre_completo() }}" disabled></div>
+{% else %}
+<div><label>Tipo de documento</label><select name="tipo_documento">{% for t in tipos %}<option {{ 'selected' if datos.get('tipo_documento') == t }}>{{ t }}</option>{% endfor %}</select></div>
+<div><label>Número de documento</label><input name="documento" value="{{ datos.get('documento', '') }}" required></div>
+<div><label>Nombres</label><input name="nombres" value="{{ datos.get('nombres', '') }}" required></div>
+<div><label>Apellidos</label><input name="apellidos" value="{{ datos.get('apellidos', '') }}" required></div>
+{% endif %}
+<div><label>Teléfono</label><input name="telefono" value="{{ u.telefono if u else datos.get('telefono', '') }}"></div>
+<div><label>Correo electrónico</label><input name="correo" type="email" value="{{ u.correo if u else datos.get('correo', '') }}" required></div>
+<div><label>Rol</label><select name="rol">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if (u.rol if u else datos.get('rol')) == r }}>{{ r.title() }}</option>{% endfor %}</select></div>
+{% if not u %}<div><label>Contraseña (mínimo 8 caracteres)</label><input name="password" type="password" required></div>{% endif %}
+</div><p><button>Guardar</button> <a class="btn sec" href="{{ url_for('rutas.usuarios') }}">Cancelar</a></p></form></div>{% endblock %}

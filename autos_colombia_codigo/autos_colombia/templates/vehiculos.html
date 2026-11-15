@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>Registrar vehículo</h1><div class="card"><form method="post"><div class="fila">
+<div><label>Placa</label><input name="placa" required></div><div><label>Marca</label><input name="marca"></div>
+<div><label>Color</label><input name="color"></div><div><label>Tipo</label><select name="tipo">{% for t in tipos %}<option>{{ t }}</option>{% endfor %}</select></div>
+<div><label>Documento del propietario</label><input name="documento" required></div></div><p><button>Guardar vehículo</button></p></form></div>{% endblock %}

@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>Nueva celda</h1><div class="card"><form method="post"><div class="fila"><div><label>Código identificador</label><input name="codigo" required></div>
+<div><label>Zona</label><input name="zona" list="zonas" required><datalist id="zonas">{% for z in zonas %}<option value="{{ z }}">{% endfor %}</datalist></div>
+<div><label>Tipo de vehículo permitido</label><select name="tipo">{% for t in tipos %}<option>{{ t }}</option>{% endfor %}</select></div></div>
+<p><button>Guardar celda</button> <a class="btn sec" href="{{ url_for('rutas.celdas') }}">Cancelar</a></p></form></div>{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>Disponibilidad de celdas</h1>
+<div class="card"><form class="filtros" method="get"><div><label>Tipo de vehículo</label><select name="tipo"><option value="">Todos</option>{% for t in tipos %}<option {{ 'selected' if t == tipo }}>{{ t }}</option>{% endfor %}</select></div>
+<div><label>Zona</label><select name="zona"><option value="">Todas</option>{% for z in zonas %}<option {{ 'selected' if z == zona }}>{{ z }}</option>{% endfor %}</select></div>
+<button>Filtrar</button>{% if g.usuario.rol == 'ADMINISTRADOR' %} <a class="btn sec" href="{{ url_for('rutas.celda_nueva') }}">+ Nueva celda</a>{% endif %}</form></div>
+<div class="resumen"><div class="verde">Libres: {{ resumen.DISPONIBLE }}</div><div class="rojo">Ocupadas: {{ resumen.OCUPADA }}</div>
+<div class="amarillo">Mantenimiento: {{ resumen.MANTENIMIENTO }}</div><div class="azul">Mensualidad: {{ resumen.RESERVADA }}</div><div style="background:#555">Total: {{ resumen.total }}</div></div>
+{% for z, lista in por_zona.items() %}<div class="card"><h3 style="margin-top:0">{{ z }}</h3><div class="mapa">
+{% for c in lista %}{% set color = {'DISPONIBLE':'verde','OCUPADA':'rojo','MANTENIMIENTO':'amarillo','RESERVADA':'azul'}[c.estado] %}
+<div class="celda {{ color }}"><b>{{ c.codigo }}</b>{{ c.tipo }}<br>{{ c.estado.title() }}{% if c.estado == 'RESERVADA' and c.id_celda in en_uso %} (en uso){% endif %}
+{% if c.estado in ('DISPONIBLE', 'MANTENIMIENTO') %}<form method="post" action="{{ url_for('rutas.celda_estado', id_c=c.id_celda, tipo=tipo, zona=zona) }}">
+<input type="hidden" name="estado" value="{{ 'MANTENIMIENTO' if c.estado == 'DISPONIBLE' else 'DISPONIBLE' }}"><button>{{ 'A mantenimiento' if c.estado == 'DISPONIBLE' else 'Habilitar' }}</button></form>{% endif %}</div>{% endfor %}
+</div></div>{% else %}<div class="card">No hay celdas para el filtro seleccionado.</div>{% endfor %}{% endblock %}

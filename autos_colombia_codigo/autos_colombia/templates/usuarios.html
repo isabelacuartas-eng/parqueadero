@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>Gestión de usuarios</h1>
+<div class="card"><form class="filtros" method="get"><div><label>Buscar (documento, nombre o correo)</label><input name="q" value="{{ q }}"></div>
+<div><label>Rol</label><select name="rol"><option value="">Todos</option>{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == rol }}>{{ r.title() }}</option>{% endfor %}</select></div>
+<button>Buscar</button> <a class="btn sec" href="{{ url_for('rutas.usuario_nuevo') }}">+ Nuevo usuario</a></form></div>
+<div class="card"><table><tr><th>ID</th><th>Documento</th><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th></tr>
+{% for u in filas %}<tr><td>{{ u.id_usuario }}</td><td>{{ u.tipo_documento }} {{ u.documento }}</td><td>{{ u.nombre_completo() }}</td><td>{{ u.correo }}</td><td>{{ u.telefono }}</td><td>{{ u.rol.title() }}</td>
+<td><span class="badge {{ u.estado }}">{{ u.estado.title() }}</span></td>
+<td><a href="{{ url_for('rutas.usuario_editar', id_u=u.id_usuario) }}">Editar</a>
+<form method="post" action="{{ url_for('rutas.usuario_estado', id_u=u.id_usuario) }}" style="display:inline" onsubmit="return confirm('¿Confirma el cambio de estado?')">
+{% if u.esta_activo() %}<input type="hidden" name="estado" value="INACTIVO"><button class="rojo">Inactivar</button>{% else %}<input type="hidden" name="estado" value="ACTIVO"><button class="sec">Activar</button>{% endif %}</form></td></tr>
+{% else %}<tr><td colspan="8">No se encontraron usuarios.</td></tr>{% endfor %}</table></div>{% endblock %}
