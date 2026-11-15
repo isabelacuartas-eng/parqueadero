@@ -29,6 +29,13 @@ Al primer arranque se crean los índices y datos de demostración (15 celdas, un
 | Administrador | admin@autoscolombia.co | Admin123* |
 | Operador | operador@autoscolombia.co | Operador123* |
 
+## Datos de ejemplo (para demostraciones y el video)
+    py cargar_demo.py              # agrega clientes, vehículos, historial, mensualidades y celdas en mantenimiento
+    py cargar_demo.py --limpiar    # borra TODA la base y la recarga desde cero
+
+Los usuarios de ejemplo usan la contraseña `Cliente123*` (los clientes no inician sesión; solo
+administrador y operador tienen acceso a la plataforma).
+
 ## Permisos
 - **Administrador:** todo, incluido el módulo de usuarios y la creación de celdas.
 - **Operador:** vehículos, entrada/salida, panel de celdas (cambiar disponible ↔ mantenimiento) y mensualidades.

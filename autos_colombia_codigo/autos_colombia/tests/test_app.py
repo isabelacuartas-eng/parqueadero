@@ -247,5 +247,24 @@ class TestRutas(Base):
         self.assertIn("inactivo", r.get_data(as_text=True))
 
 
+class TestDemo(Base):
+    def test_carga_demo_consistente_e_idempotente(self):
+        import cargar_demo
+        self.assertTrue(cargar_demo.cargar())
+        self.assertFalse(cargar_demo.cargar())          # no duplica
+        abiertos = list(db.col("movimientos").find({"abierto": True}))
+        self.assertEqual(len(abiertos), 3)
+        self.assertEqual(len({m["id_celda"] for m in abiertos}), 3)   # una celda, un vehículo
+        self.assertGreaterEqual(len(self.m.listar_historial()), 12)
+        r = self.c.resumen(self.c.listar())
+        self.assertEqual((r["MANTENIMIENTO"], r["RESERVADA"]), (2, 2))
+        self.assertEqual(len(self.ct.listar_activos()), 2)
+        # cada celda OCUPADA tiene un vehículo dentro y viceversa (salvo las reservadas)
+        for m in abiertos:
+            estado = self.c.obtener(m["id_celda"]).estado
+            self.assertIn(estado, ("OCUPADA", "RESERVADA"))
+        self.assertEqual(self.u.buscar("1006")[0].estado, "INACTIVO")
+
+
 if __name__ == "__main__":
     unittest.main()
