@@ -15,6 +15,10 @@ except ImportError:  # permite importar el proyecto sin pymongo (p. ej. en prueb
     class DuplicateKeyError(Exception):
         """Clave duplicada (equivalente a pymongo.errors.DuplicateKeyError)."""
 
+# Tarifas iniciales (pesos colombianos). El administrador las puede modificar desde la pantalla Tarifas.
+TARIFAS_DEFECTO = {"MENSUALIDAD_Carro": 180000, "MENSUALIDAD_Moto": 90000,
+                   "HORA_Carro": 4000, "HORA_Moto": 2000, "TOLERANCIA_MIN": 10}
+
 _db = None
 
 
@@ -59,6 +63,15 @@ def inicializar():
     # una celda y un vehículo solo pueden tener un movimiento abierto a la vez
     col("movimientos").create_index("id_celda", unique=True, partialFilterExpression={"abierto": True})
     col("movimientos").create_index("id_vehiculo", unique=True, partialFilterExpression={"abierto": True})
+
+    # tarifas: un concepto no se repite; un movimiento solo puede tener un cobro válido (RNF-06)
+    col("tarifas").create_index("concepto", unique=True)
+    col("pagos").create_index("id_movimiento", unique=True,
+                              partialFilterExpression={"tipo": "OCASIONAL", "estado": "VALIDO"})
+    col("pagos").create_index("fecha")
+    for concepto, valor in TARIFAS_DEFECTO.items():
+        if not col("tarifas").find_one({"concepto": concepto}):
+            col("tarifas").insert_one({"concepto": concepto, "valor": valor, "actualizado": datetime.now()})
 
     if col("usuarios").count_documents({}) == 0:
         def usuario(tipo_doc, doc, nom, ape, tel, correo, rol, clave):

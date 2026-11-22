@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>Tarifas</h1><div class="card"><form method="post"><div class="fila">
+<div><label>Mensualidad carro ($)</label><input name="MENSUALIDAD_Carro" value="{{ t.MENSUALIDAD_Carro }}" required></div>
+<div><label>Mensualidad moto ($)</label><input name="MENSUALIDAD_Moto" value="{{ t.MENSUALIDAD_Moto }}" required></div>
+<div><label>Hora o fracción carro ($)</label><input name="HORA_Carro" value="{{ t.HORA_Carro }}" required></div>
+<div><label>Hora o fracción moto ($)</label><input name="HORA_Moto" value="{{ t.HORA_Moto }}" required></div>
+<div><label>Tolerancia sin cobro (minutos)</label><input name="TOLERANCIA_MIN" value="{{ t.TOLERANCIA_MIN }}" required></div></div>
+<p class="muted" style="font-size:13px">Los cambios solo aplican a los cobros nuevos; los pagos ya registrados conservan su valor.</p><p><button>Guardar tarifas</button></p></form></div>{% endblock %}

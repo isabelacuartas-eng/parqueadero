@@ -1,4 +1,4 @@
-"""Autos Colombia - Iteraciones 1 y 2: vehículos, usuarios y celdas (Flask + MongoDB)."""
+"""Autos Colombia - Iteraciones 1, 2 y 3: vehículos, usuarios, celdas y pagos (Flask + MongoDB)."""
 import os
 from datetime import timedelta
 
@@ -17,6 +17,10 @@ def crear_app():
     @app.template_filter("fecha")
     def fecha(valor):
         return valor.strftime("%Y-%m-%d %H:%M") if valor else "—"
+
+    @app.template_filter("cop")
+    def cop(valor):
+        return "$ " + f"{int(valor or 0):,}".replace(",", ".")
 
     return app
 

@@ -63,7 +63,7 @@ class MovimientoService:
             raise ReglaNegocioError("El vehículo o la celda ya tienen un movimiento abierto.")
         return celda.codigo
 
-    def registrar_salida(self, id_movimiento: int) -> None:
+    def registrar_salida(self, id_movimiento: int) -> dict:
         mov = col("movimientos").find_one_and_update(
             {"id_movimiento": id_movimiento, "abierto": True},
             {"$set": {"abierto": False, "fecha_salida": datetime.now()}}, return_document=True)
@@ -72,6 +72,7 @@ class MovimientoService:
         # solo se libera la celda si estaba OCUPADA; una reservada sigue reservada
         col("celdas").update_one({"id_celda": mov["id_celda"], "estado": "OCUPADA"},
                                  {"$set": {"estado": "DISPONIBLE"}})
+        return mov
 
     def _unir(self, movimientos):
         filas = []

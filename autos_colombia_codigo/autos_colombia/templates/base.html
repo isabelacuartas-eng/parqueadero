@@ -8,7 +8,8 @@
 <a href="{{ url_for('rutas.vehiculos') }}">Vehículos</a>
 <a href="{{ url_for('rutas.celdas') }}">Celdas</a>
 <a href="{{ url_for('rutas.mensualidades') }}">Mensualidades</a>
-{% if g.usuario.rol == 'ADMINISTRADOR' %}<a href="{{ url_for('rutas.usuarios') }}">Usuarios</a>{% endif %}
+<a href="{{ url_for('rutas.pagos') }}">Pagos</a>
+{% if g.usuario.rol == 'ADMINISTRADOR' %}<a href="{{ url_for('rutas.tarifas') }}">Tarifas</a><a href="{{ url_for('rutas.usuarios') }}">Usuarios</a>{% endif %}
 <form method="post" action="{{ url_for('rutas.logout') }}"><span>{{ g.usuario.nombre }} · {{ g.usuario.rol.title() }}</span><button class="sec">Salir</button></form>
 {% endif %}</header>
 <main>{% with m = get_flashed_messages(with_categories=true) %}{% for c, t in m %}<div class="flash {{ c }}">{{ t }}</div>{% endfor %}{% endwith %}

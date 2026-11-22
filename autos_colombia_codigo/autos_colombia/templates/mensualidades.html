@@ -3,7 +3,9 @@
 <div><label>Documento del cliente</label><input name="documento" required></div>
 <div><label>Celda disponible</label><select name="id_celda" required>{% for c in libres %}<option value="{{ c.id_celda }}">{{ c.codigo }} · {{ c.tipo }} · {{ c.zona }}</option>{% endfor %}</select></div>
 <div><label>Vigencia (días)</label><input name="dias" type="number" min="1" max="365" value="30" required></div></div><p><button>Asignar mensualidad</button></p></form></div>
-<div class="card"><h3 style="margin-top:0">Contratos activos</h3><table><tr><th>Cliente</th><th>Documento</th><th>Celda</th><th>Desde</th><th>Hasta</th><th></th></tr>
+<div class="card"><h3 style="margin-top:0">Contratos activos</h3><table><tr><th>Cliente</th><th>Documento</th><th>Celda</th><th>Desde</th><th>Hasta</th><th>Vence en</th><th></th></tr>
 {% for f in contratos %}<tr><td>{{ f.cliente }}</td><td>{{ f.documento }}</td><td>{{ f.celda }}</td><td>{{ f.contrato.fecha_inicio|fecha }}</td><td>{{ f.contrato.fecha_fin|fecha }}</td>
-<td><form method="post" action="{{ url_for('rutas.mensualidad_finalizar', id_ct=f.contrato.id_contrato) }}"><button class="rojo">Finalizar</button></form></td></tr>
-{% else %}<tr><td colspan="6">No hay contratos activos.</td></tr>{% endfor %}</table></div>{% endblock %}
+{% set dias = (f.contrato.fecha_fin - ahora).days %}<td>{% if dias < 0 %}Vencido{% elif dias <= 5 %}<b style="color:#b3261e">{{ dias }} días</b>{% else %}{{ dias }} días{% endif %}</td>
+<td><a class="btn sec" href="{{ url_for('rutas.pago_mensualidad', documento=f.documento) }}">Registrar pago</a>
+<form style="display:inline" method="post" action="{{ url_for('rutas.mensualidad_finalizar', id_ct=f.contrato.id_contrato) }}"><button class="rojo">Finalizar</button></form></td></tr>
+{% else %}<tr><td colspan="7">No hay contratos activos.</td></tr>{% endfor %}</table></div>{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>Registrar salida y cobro</h1>
+<div class="card"><div class="fila">
+<div><label>Placa</label><b>{{ v.placa }}</b> ({{ v.tipo }})</div><div><label>Propietario</label>{{ v.propietario }}</div>
+<div><label>Celda</label>{{ v.celda }}</div><div><label>Entrada</label>{{ v.entrada|fecha }}</div>
+<div><label>Tiempo transcurrido</label>{{ v.minutos }} minutos</div></div></div>
+<div class="card">
+{% if v.titular %}<h3 style="margin-top:0">Mensualidad activa: sin cobro</h3><p>El vehículo está en la celda reservada de su titular. La salida no genera pago.</p>
+<form method="post"><button>Confirmar salida</button> <a class="btn sec" href="{{ url_for('rutas.index') }}">Cancelar</a></form>
+{% else %}<h3 style="margin-top:0">Vehículo ocasional</h3>
+<p>Tarifa: {{ v.valor_hora|cop }} por hora o fracción · Tolerancia: {{ v.tolerancia }} minutos sin cobro.</p>
+<p style="font-size:26px;margin:6px 0"><b>Valor a pagar: {{ v.valor|cop }}</b>{% if v.horas %} <span style="font-size:14px">({{ v.horas }} h)</span>{% endif %}</p>
+<p class="muted" style="font-size:12px">El valor final se calcula con la hora exacta en que confirme la salida.</p>
+<form method="post"><div class="fila"><div><label>Método de pago</label><select name="metodo">{% for m in metodos %}<option value="{{ m }}">{{ m.title() }}</option>{% endfor %}</select></div>
+<div><label>Referencia (obligatoria si no es efectivo)</label><input name="referencia"></div></div>
+<p><button>{{ 'Confirmar salida y cobrar' if v.valor else 'Confirmar salida' }}</button> <a class="btn sec" href="{{ url_for('rutas.index') }}">Cancelar</a></p></form>{% endif %}
+</div>{% endblock %}

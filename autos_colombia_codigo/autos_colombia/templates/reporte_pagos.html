@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>Reporte de recaudo</h1>
+<div class="card"><form class="filtros" method="get"><div><label>Desde</label><input type="date" name="desde" value="{{ desde }}"></div><div><label>Hasta</label><input type="date" name="hasta" value="{{ hasta }}"></div><button>Generar</button> <a class="btn sec" href="{{ url_for('rutas.pagos') }}">Volver a pagos</a></form></div>
+<div class="resumen"><div class="verde">Recaudo total: {{ r.total|cop }}</div><div style="background:#555">Pagos válidos: {{ r.cantidad }}</div><div class="rojo">Anulados: {{ r.anulados }} ({{ r.valor_anulado|cop }})</div></div>
+{% macro bloque(titulo, datos) %}<div class="card"><h3 style="margin-top:0">{{ titulo }}</h3><table><tr><th>Concepto</th><th>Pagos</th><th>Total</th></tr>
+{% for k, d in datos.items() %}<tr><td>{{ k.title() if k.isupper() else k }}</td><td>{{ d.n }}</td><td>{{ d.total|cop }}</td></tr>{% else %}<tr><td colspan="3">Sin pagos en el rango.</td></tr>{% endfor %}</table></div>{% endmacro %}
+{{ bloque('Por tipo de pago', r.por_tipo) }}{{ bloque('Por método de pago', r.por_metodo) }}{{ bloque('Por operador', r.por_operador) }}{{ bloque('Por día', r.por_dia) }}{% endblock %}

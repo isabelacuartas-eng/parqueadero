@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 
 from datos.db import col, inicializar, obtener_db, siguiente_id
+from servicios.pago_service import calcular_cobro
 
 CLAVE_DEMO = "Cliente123*"
 
@@ -57,10 +58,60 @@ def _movimiento(id_vehiculo, id_celda, entrada, salida=None, obs="", id_operador
         "abierto": salida is None, "id_operador": id_operador})
 
 
+def _cargar_pagos():
+    """Pagos de ejemplo: cobros de los movimientos cerrados de vehículos ocasionales y mensualidades."""
+    ahora = datetime.now()
+    t = {x["concepto"]: x["valor"] for x in col("tarifas").find({})}
+    contratos = {c["id_usuario"]: c for c in col("contratos").find({})}
+    operadores = [u["id_usuario"] for u in col("usuarios").find({"rol": "OPERADOR"})] or [2]
+    n = 0
+    for m in col("movimientos").find({"abierto": False}).sort("fecha_entrada", 1):
+        v = col("vehiculos").find_one({"id_vehiculo": m["id_vehiculo"]})
+        if v["id_usuario"] in contratos:
+            continue  # titular de mensualidad: no paga por visita
+        minutos, horas, valor = calcular_cobro(m["fecha_entrada"], m["fecha_salida"], t["HORA_" + v["tipo"]],
+                                               t["TOLERANCIA_MIN"])
+        if valor == 0:
+            continue
+        id_p = siguiente_id("pagos"); n += 1
+        metodo = ("EFECTIVO", "TRANSFERENCIA", "TARJETA")[n % 3]
+        col("pagos").insert_one({
+            "id_pago": id_p, "consecutivo": f"PG-{id_p:06d}", "fecha": m["fecha_salida"], "estado": "VALIDO",
+            "tipo": "OCASIONAL", "id_usuario": v["id_usuario"], "id_vehiculo": v["id_vehiculo"],
+            "id_movimiento": m["id_movimiento"], "concepto": f"Parqueadero {v['tipo'].lower()} {v['placa']}: {horas} h",
+            "minutos": minutos, "horas": horas, "valor": valor, "metodo": metodo,
+            "referencia": "" if metodo == "EFECTIVO" else f"REF-{1000 + n}", "id_operador": operadores[n % len(operadores)]})
+    for doc_cli, dias_atras, metodo, ref in (("1003", 10, "TRANSFERENCIA", "TRF-884201"), ("1005", 5, "EFECTIVO", "")):
+        u = col("usuarios").find_one({"documento": doc_cli}); c = contratos.get(u["id_usuario"]) if u else None
+        if not c:
+            continue
+        celda = col("celdas").find_one({"id_celda": c["id_celda"]})
+        id_p = siguiente_id("pagos")
+        col("pagos").insert_one({
+            "id_pago": id_p, "consecutivo": f"PG-{id_p:06d}", "fecha": ahora - timedelta(days=dias_atras),
+            "estado": "VALIDO", "tipo": "MENSUALIDAD", "id_usuario": u["id_usuario"], "id_contrato": c["id_contrato"],
+            "concepto": f"Mensualidad celda {celda['codigo']} (+30 días)", "dias_extendidos": 30,
+            "valor": t["MENSUALIDAD_" + celda["tipo"]], "metodo": metodo, "referencia": ref, "id_operador": operadores[0]})
+    # un pago anulado para mostrar la trazabilidad
+    ultimo = col("pagos").find_one({"tipo": "OCASIONAL"})
+    if ultimo:
+        id_p = siguiente_id("pagos")
+        col("pagos").insert_one({
+            "id_pago": id_p, "consecutivo": f"PG-{id_p:06d}", "fecha": ahora - timedelta(hours=30), "estado": "ANULADO",
+            "tipo": "MENSUALIDAD", "id_usuario": ultimo["id_usuario"], "id_contrato": 0,
+            "concepto": "Mensualidad (registrada por error)", "dias_extendidos": 30, "valor": 180000,
+            "metodo": "EFECTIVO", "referencia": "", "id_operador": operadores[0],
+            "motivo_anulacion": "Cliente equivocado, se registró de nuevo", "fecha_anulacion": ahora - timedelta(hours=29),
+            "id_anulador": 1})
+
+
 def cargar():
-    """Devuelve True si cargó los datos y False si ya estaban cargados."""
+    """Devuelve True si cargó datos y False si ya estaban cargados."""
     inicializar()
     if col("vehiculos").find_one({"placa": "XYZ789"}):
+        if col("pagos").count_documents({}) == 0:   # demo de iteración 2 ya cargada: agrega solo los pagos
+            _cargar_pagos()
+            return True
         return False
     ahora = datetime.now()
 
@@ -124,6 +175,7 @@ def cargar():
     _movimiento(v_carlos, c("M-01"), hace(0, 8, 10))
     col("celdas").update_one({"codigo": "M-01"}, {"$set": {"estado": "OCUPADA"}})
     _movimiento(v_laura, c("CAR-10"), hace(0, 7, 55), None, "Usa su celda de mensualidad")  # sigue RESERVADA
+    _cargar_pagos()
     return True
 
 
@@ -135,6 +187,6 @@ if __name__ == "__main__":
         for nombre in db.list_collection_names():
             db.drop_collection(nombre)
     if cargar():
-        print("Datos de ejemplo cargados. Contraseña de los usuarios de ejemplo:", CLAVE_DEMO)
+        print("Datos de ejemplo cargados (incluye pagos). Contraseña de los usuarios de ejemplo:", CLAVE_DEMO)
     else:
         print("Los datos de ejemplo ya estaban cargados (use --limpiar para recargarlos desde cero).")

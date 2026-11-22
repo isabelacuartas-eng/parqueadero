@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block contenido %}
+<style>@media print{header,.noprint{display:none}main{margin:0}body{background:#fff}}</style>
+<div class="card" style="max-width:520px;margin:0 auto;position:relative">
+<h1 style="text-align:center;margin-bottom:2px">Autos Colombia</h1><p style="text-align:center;margin-top:0">Comprobante de pago <b>{{ p.consecutivo }}</b></p>
+{% if p.estado == 'ANULADO' %}<p style="text-align:center;color:#b3261e;font-weight:700;font-size:20px;border:2px solid #b3261e;padding:6px">PAGO ANULADO<br><span style="font-size:13px;font-weight:400">{{ p.motivo_anulacion }}</span></p>{% endif %}
+<table><tr><td>Fecha</td><td>{{ p.fecha|fecha }}</td></tr><tr><td>Cliente</td><td>{{ p.cliente }} ({{ p.documento }})</td></tr>
+<tr><td>Concepto</td><td>{{ p.concepto }}</td></tr>
+{% if p.tipo == 'OCASIONAL' %}<tr><td>Placa</td><td>{{ p.placa }}</td></tr><tr><td>Entrada</td><td>{{ p.entrada|fecha }}</td></tr><tr><td>Salida</td><td>{{ p.salida|fecha }}</td></tr><tr><td>Tiempo cobrado</td><td>{{ p.horas }} h ({{ p.minutos }} min)</td></tr>
+{% else %}<tr><td>Vigente hasta</td><td>{{ p.vigente_hasta|fecha }}</td></tr>{% endif %}
+<tr><td>Método</td><td>{{ p.metodo.title() }}{% if p.referencia %} · Ref. {{ p.referencia }}{% endif %}</td></tr><tr><td>Atendió</td><td>{{ p.operador }}</td></tr>
+<tr><td><b>Total pagado</b></td><td style="font-size:20px"><b>{{ p.valor|cop }}</b></td></tr></table>
+<p class="noprint" style="text-align:center"><button onclick="window.print()">Imprimir</button> <a class="btn sec" href="{{ url_for('rutas.pagos') }}">Volver a pagos</a></p></div>{% endblock %}

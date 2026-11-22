@@ -1,6 +1,8 @@
 """Paquete controladores: rutas HTTP (Flask Blueprint) y control de acceso por rol."""
 from functools import wraps
 
+from datetime import date, datetime
+
 from flask import Blueprint, flash, g, redirect, render_template, request, session, url_for
 
 from modelo.entidades import ROLES, TIPOS_DOCUMENTO, TIPOS_VEHICULO
@@ -9,11 +11,14 @@ from servicios.celda_service import CeldaService
 from servicios.contrato_service import ContratoService
 from servicios.errores import ReglaNegocioError
 from servicios.movimiento_service import MovimientoService
+from servicios.pago_service import METODOS, PagoService
+from servicios.tarifa_service import TarifaService
 from servicios.usuario_service import UsuarioService
 
 bp = Blueprint("rutas", __name__)
 auth_srv, usr_srv, celda_srv = AuthService(), UsuarioService(), CeldaService()
 mov_srv, ctr_srv = MovimientoService(), ContratoService()
+pago_srv, tarifa_srv = PagoService(), TarifaService()
 
 RUTAS_PUBLICAS = {"rutas.login", "static"}
 
@@ -83,14 +88,25 @@ def entrada():
     return render_template("entrada.html")
 
 
-@bp.route("/salida/<int:id_mov>", methods=["POST"])
+@bp.route("/salida/<int:id_mov>", methods=["GET", "POST"])
 def salida(id_mov):
+    """Salida de un vehículo: muestra el cobro (RF-11) y, al confirmar, cierra el movimiento."""
+    if request.method == "POST":
+        try:
+            pago = pago_srv.registrar_salida_con_cobro(id_mov, request.form.get("metodo"),
+                                                       request.form.get("referencia"), g.usuario["id"])
+            if pago:
+                flash(f"Salida registrada y pago {pago['consecutivo']} generado.", "ok")
+                return redirect(url_for("rutas.comprobante", id_pago=pago["id_pago"]))
+            flash("Salida registrada. No generó cobro.", "ok")
+            return redirect(url_for("rutas.index"))
+        except ReglaNegocioError as e:
+            flash(str(e), "error")
     try:
-        mov_srv.registrar_salida(id_mov)
-        flash("Salida registrada.", "ok")
+        return render_template("salida.html", v=pago_srv.vista_previa_salida(id_mov), metodos=METODOS)
     except ReglaNegocioError as e:
         flash(str(e), "error")
-    return redirect(url_for("rutas.index"))
+        return redirect(url_for("rutas.index"))
 
 
 @bp.route("/historial")
@@ -217,7 +233,8 @@ def mensualidades():
         return redirect(url_for("rutas.mensualidades"))
     ctr_srv.vencer_vencidos()
     libres = [c for c in celda_srv.listar() if c.estado == "DISPONIBLE"]
-    return render_template("mensualidades.html", contratos=ctr_srv.listar_activos(), libres=libres)
+    return render_template("mensualidades.html", contratos=ctr_srv.listar_activos(), libres=libres,
+                           ahora=datetime.now())
 
 
 @bp.route("/mensualidades/<int:id_ct>/finalizar", methods=["POST"])
@@ -229,3 +246,84 @@ def mensualidad_finalizar(id_ct):
     except ReglaNegocioError as e:
         flash(str(e), "error")
     return redirect(url_for("rutas.mensualidades"))
+
+
+# ---------- Pagos (iteración 3) ----------
+def _fecha(txt):
+    try:
+        return datetime.strptime(txt, "%Y-%m-%d").date() if txt else None
+    except ValueError:
+        return None
+
+
+@bp.route("/pagos")
+@rol_requerido(*STAFF)
+def pagos():
+    f = {k: request.args.get(k, "") for k in ("desde", "hasta", "tipo", "metodo", "documento", "estado")}
+    # el operador solo ve los pagos que él registró; el administrador ve todos
+    solo_mios = g.usuario["id"] if g.usuario["rol"] == "OPERADOR" else None
+    filas, total = pago_srv.listar(desde=_fecha(f["desde"]), hasta=_fecha(f["hasta"]), tipo=f["tipo"],
+                                   metodo=f["metodo"], documento=f["documento"], estado=f["estado"],
+                                   id_operador=solo_mios)
+    return render_template("pagos.html", filas=filas, total=total, f=f, metodos=METODOS)
+
+
+@bp.route("/pagos/mensualidad", methods=["GET", "POST"])
+@rol_requerido(*STAFF)
+def pago_mensualidad():
+    if request.method == "POST":
+        try:
+            pago = pago_srv.registrar_pago_mensualidad(request.form.get("documento"), request.form.get("metodo"),
+                                                       request.form.get("referencia"), g.usuario["id"])
+            flash(f"Pago {pago['consecutivo']} registrado. Mensualidad renovada por 30 días.", "ok")
+            return redirect(url_for("rutas.comprobante", id_pago=pago["id_pago"]))
+        except ReglaNegocioError as e:
+            flash(str(e), "error")
+    return render_template("pago_form.html", documento=request.values.get("documento", ""), metodos=METODOS,
+                           tarifas=tarifa_srv.obtener_todas())
+
+
+@bp.route("/pagos/<int:id_pago>/comprobante")
+@rol_requerido(*STAFF)
+def comprobante(id_pago):
+    try:
+        p = pago_srv.obtener(id_pago)
+    except ReglaNegocioError as e:
+        flash(str(e), "error")
+        return redirect(url_for("rutas.pagos"))
+    if g.usuario["rol"] == "OPERADOR" and p.get("id_operador") != g.usuario["id"]:
+        flash("No tiene permisos para ver este comprobante.", "error")
+        return redirect(url_for("rutas.pagos"))
+    return render_template("comprobante.html", p=p)
+
+
+@bp.route("/pagos/<int:id_pago>/anular", methods=["POST"])
+@rol_requerido(ADMIN)
+def pago_anular(id_pago):
+    try:
+        pago_srv.anular(id_pago, request.form.get("motivo"), g.usuario["id"])
+        flash("Pago anulado. El registro se conserva para auditoría.", "ok")
+    except ReglaNegocioError as e:
+        flash(str(e), "error")
+    return redirect(url_for("rutas.pagos"))
+
+
+@bp.route("/pagos/reporte")
+@rol_requerido(ADMIN)
+def pagos_reporte():
+    hoy = date.today()
+    desde, hasta = _fecha(request.args.get("desde")) or hoy, _fecha(request.args.get("hasta")) or hoy
+    return render_template("reporte_pagos.html", r=pago_srv.reporte(desde, hasta), desde=desde, hasta=hasta)
+
+
+@bp.route("/tarifas", methods=["GET", "POST"])
+@rol_requerido(ADMIN)
+def tarifas():
+    if request.method == "POST":
+        try:
+            tarifa_srv.actualizar(request.form.to_dict(), g.usuario["id"])
+            flash("Tarifas actualizadas. Se aplican a los cobros nuevos.", "ok")
+        except ReglaNegocioError as e:
+            flash(str(e), "error")
+        return redirect(url_for("rutas.tarifas"))
+    return render_template("tarifas.html", t=tarifa_srv.obtener_todas())

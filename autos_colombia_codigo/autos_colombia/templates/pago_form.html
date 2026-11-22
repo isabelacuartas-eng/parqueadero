@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block contenido %}
+<h1>Registrar pago de mensualidad</h1>
+<div class="card"><form method="post"><div class="fila"><div><label>Documento del cliente</label><input name="documento" value="{{ documento }}" required autofocus></div>
+<div><label>Método de pago</label><select name="metodo">{% for m in metodos %}<option value="{{ m }}">{{ m.title() }}</option>{% endfor %}</select></div>
+<div><label>Referencia (obligatoria si no es efectivo)</label><input name="referencia"></div></div>
+<p class="muted" style="font-size:13px">Valor vigente: carro {{ tarifas.MENSUALIDAD_Carro|cop }} · moto {{ tarifas.MENSUALIDAD_Moto|cop }}. El valor se toma de la tarifa según el tipo de la celda del cliente y el pago renueva el contrato por 30 días.</p>
+<p><button>Registrar pago</button> <a class="btn sec" href="{{ url_for('rutas.mensualidades') }}">Cancelar</a></p></form></div>{% endblock %}

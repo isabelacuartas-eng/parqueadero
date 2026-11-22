@@ -2,5 +2,5 @@
 <h1>Vehículos dentro del parqueadero</h1><p>Celdas disponibles: <b>{{ libres }}</b></p>
 <div class="card"><table><tr><th>Placa</th><th>Marca</th><th>Celda</th><th>Entrada</th><th></th></tr>
 {% for f in dentro %}<tr><td>{{ f.placa }}</td><td>{{ f.marca }}</td><td>{{ f.codigo }}</td><td>{{ f.fecha_entrada|fecha }}</td>
-<td><form method="post" action="{{ url_for('rutas.salida', id_mov=f.id_movimiento) }}"><button>Registrar salida</button></form></td></tr>
+<td><a class="btn" href="{{ url_for('rutas.salida', id_mov=f.id_movimiento) }}">Registrar salida</a></td></tr>
 {% else %}<tr><td colspan="5">No hay vehículos dentro.</td></tr>{% endfor %}</table></div>{% endblock %}
